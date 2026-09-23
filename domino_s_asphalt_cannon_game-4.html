@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Domino's Asphalt Bow - Oh Yes We Did!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap');
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+            background-color: #0b111e;
+        }
+
+        .dominos-red { color: #E31837; }
+        .bg-dominos-red { background-color: #E31837; }
+        .dominos-blue { color: #006491; }
+        .bg-dominos-blue { background-color: #006491; }
+
+        .btn-action {
+            background: linear-gradient(135deg, #E31837 0%, #a80c23 100%);
+            box-shadow: 0 4px 0 #780818, 0 8px 12px rgba(0,0,0,0.4);
+            transition: all 0.1s ease;
+        }
+
+        .btn-action:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #780818, 0 3px 4px rgba(0,0,0,0.4);
+        }
+
+        .btn-victory {
+            background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+            box-shadow: 0 4px 0 #854d0e, 0 8px 12px rgba(0,0,0,0.4);
+            transition: all 0.1s ease;
+        }
+
+        .btn-victory:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #854d0e, 0 3px 4px rgba(0,0,0,0.4);
+        }
+
+        /* Glassmorphism UI Panels */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.96); opacity: 0.9; }
+            50% { transform: scale(1.04); opacity: 1; }
+            100% { transform: scale(0.96); opacity: 0.9; }
+        }
+
+        .pulse { animation: pulse-ring 2s infinite; }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col justify-between items-center relative select-none">
+
+    <header class="w-full max-w-6xl px-4 py-3 fixed top-0 z-20 flex justify-between items-center pointer-events-none">
+        <!-- Left Score & Combo -->
+        <div class="flex items-center gap-2 sm:gap-3 pointer-events-auto">
+            <div class="bg-dominos-blue px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 border-2 border-white/20 shadow-lg glass-panel">
+                <i class="fa-solid fa-pizza-slice text-yellow-400 text-lg sm:text-xl"></i>
+                <div>
+                    <div class="text-[9px] sm:text-[10px] text-gray-300 font-bold uppercase tracking-wider">ĐIỂM SỐ</div>
+                    <div id="scoreText" class="text-xl sm:text-2xl font-black text-white leading-none">0</div>
+                </div>
+            </div>
+            <div class="bg-slate-800/80 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl flex items-center gap-2 border border-white/10 glass-panel">
+                <i class="fa-solid fa-fire text-orange-500 text-base sm:text-lg"></i>
+                <div>
+                    <div class="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase">COMBO</div>
+                    <div id="comboText" class="text-base sm:text-lg font-black text-orange-400 leading-none">x1</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Level Progress (Màn X/6), Wind Indicator & Audio Toggle -->
+        <div class="flex items-center gap-2 sm:gap-3 pointer-events-auto">
+            <div class="bg-slate-900/90 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-white/10 text-center glass-panel">
+                <div id="levelText" class="text-[10px] sm:text-xs font-bold text-sky-400 uppercase tracking-widest">MÀN 1 / 6</div>
+                <div id="potholeProgressText" class="text-xs sm:text-sm font-extrabold text-white">Ổ GÀ: 0/3</div>
+            </div>
+
+            <div id="windIndicator" class="bg-slate-900/90 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl border border-white/10 flex items-center gap-2 glass-panel">
+                <i id="windIcon" class="fa-solid fa-wind text-cyan-400 text-base sm:text-lg transition-transform duration-300"></i>
+                <div class="text-left">
+                    <div class="text-[9px] text-gray-400 font-bold uppercase">GIÓ</div>
+                    <div id="windSpeedText" class="text-xs font-black text-cyan-300 leading-none">0 km/h</div>
+                </div>
+            </div>
+
+            <button id="soundToggleBtn" class="bg-slate-800/80 p-2.5 rounded-xl border border-white/20 text-white hover:bg-slate-700 transition">
+                <i id="soundIcon" class="fa-solid fa-volume-high text-sm sm:text-base"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="relative w-full h-full flex items-center justify-center overflow-hidden">
+        <canvas id="gameCanvas" class="w-full h-full block bg-slate-950 cursor-crosshair"></canvas>
+
+        <!-- Floating Announcement Banner -->
+        <div id="bannerText" class="absolute pointer-events-none opacity-0 transition-all duration-500 transform scale-50 font-black text-center text-4xl sm:text-6xl text-yellow-300 drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] z-30">
+            OH YES WE DID!
+        </div>
+
+        <!-- Drag & Aim Visual Help Overlay -->
+        <div id="dragHint" class="absolute bottom-6 left-6 pointer-events-none text-white/80 text-xs sm:text-sm font-bold flex items-center gap-2 bg-slate-900/80 px-4 py-2.5 rounded-2xl border border-white/20 glass-panel animate-bounce shadow-xl z-20">
+            <i class="fa-solid fa-arrow-pointer text-yellow-400 text-lg"></i>
+            <span>Nhấp giữ & kéo trực tiếp trên Cánh Cung để ngắm và chọn lực!</span>
+        </div>
+    </main>
+
+    <!-- Start Screen Overlay -->
+    <div id="startModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="max-w-md w-full bg-slate-900 border-2 border-dominos-blue rounded-3xl p-6 text-center shadow-2xl relative overflow-hidden">
+            <div class="absolute -top-12 -right-12 w-32 h-32 bg-dominos-red rounded-full blur-3xl opacity-50"></div>
+            <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-dominos-blue rounded-full blur-3xl opacity-50"></div>
+
+            <div class="relative z-10">
+                <div class="inline-block bg-dominos-blue px-4 py-1 rounded-full text-white font-extrabold text-xs tracking-widest uppercase mb-2">Domino's Pothole Patrol</div>
+                <h1 class="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight mb-2">NỎ BẮN <span class="dominos-red">NHỰA ĐƯỜNG</span></h1>
+                <p class="text-gray-300 text-sm mb-5">Vượt qua <strong>6 Màn chơi thử thách</strong> để san phẳng toàn bộ ổ gà trên đường phố!</p>
+
+                <div class="space-y-2.5 text-left bg-slate-800/60 p-4 rounded-xl mb-6 text-xs text-gray-300 border border-white/5">
+                    <div class="flex items-center gap-2.5"><i class="fa-solid fa-trophy text-yellow-400 text-base"></i><span>Hoàn thành xuất sắc <strong>6/6 Màn chơi</strong> để giành chiến thắng.</span></div>
+                    <div class="flex items-center gap-2.5"><i class="fa-solid fa-hand-pointer text-yellow-400 text-base"></i><span>Kéo ngược cánh cung để điều chỉnh **Góc & Lực bắn**.</span></div>
+                    <div class="flex items-center gap-2.5"><i class="fa-solid fa-truck-monster text-red-500 text-base"></i><span>Tránh đâm vào **Ô tô / Xe bus** di chuyển cản đường.</span></div>
+                    <div class="flex items-center gap-2.5"><i class="fa-solid fa-wind text-cyan-400 text-base"></i><span>Tính toán sức **Gió & Vùng xoáy trọng lực**.</span></div>
+                </div>
+
+                <button id="startGameBtn" class="btn-action w-full py-3.5 rounded-2xl text-white font-black text-xl tracking-wider uppercase pulse">
+                    BẮT ĐẦU BẮN
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Level Clear / Next Level Modal (For Levels 1-5) -->
+    <div id="endModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="max-w-md w-full bg-slate-900 border-2 border-yellow-500 rounded-3xl p-6 text-center shadow-2xl relative">
+            <h2 id="endModalTitle" class="text-3xl font-black text-yellow-400 uppercase mb-1">HOÀN THÀNH MÀN!</h2>
+            <p id="endModalSub" class="text-gray-300 text-sm mb-5">Tất cả ổ gà đã được vá phẳng mịn màng!</p>
+
+            <div class="bg-slate-800/80 p-4 rounded-2xl mb-6 space-y-2 border border-white/10">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-400">Tổng điểm hiện tại:</span>
+                    <span id="finalScore" class="text-2xl font-black text-yellow-400">0</span>
+                </div>
+                <div class="flex justify-between items-center text-xs text-gray-400">
+                    <span>Độ chính xác:</span>
+                    <span id="accuracyText" class="text-white font-bold">100%</span>
+                </div>
+            </div>
+
+            <button id="nextLevelBtn" class="btn-action w-full py-3.5 rounded-2xl text-white font-black text-xl tracking-wider uppercase">
+                MÀN TIẾP THEO <i class="fa-solid fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Final Level 6 VICTORY Modal -->
+    <div id="victoryModal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="max-w-lg w-full bg-slate-900 border-4 border-yellow-400 rounded-3xl p-6 sm:p-8 text-center shadow-2xl relative overflow-hidden">
+            <div class="absolute -top-16 -right-16 w-40 h-40 bg-yellow-500 rounded-full blur-3xl opacity-40"></div>
+            <div class="absolute -bottom-16 -left-16 w-40 h-40 bg-dominos-red rounded-full blur-3xl opacity-40"></div>
+
+            <div class="relative z-10">
+                <div class="inline-flex items-center gap-2 bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 px-4 py-1.5 rounded-full font-black text-xs uppercase tracking-widest mb-3">
+                    <i class="fa-solid fa-crown text-sm"></i> HOÀN THÀNH TẤT CẢ 6 MÀN
+                </div>
+
+                <h1 class="text-3xl sm:text-5xl font-black text-yellow-400 uppercase tracking-tight mb-2 leading-none">VICTORY!</h1>
+                <p class="text-white font-bold text-base sm:text-lg mb-6">CHÚC MỪNG BẠN ĐÃ HOÀN THÀNH TẤT CẢ 6 MÀN CHƠI - <span class="dominos-red">OH YES WE DID!</span></p>
+
+                <div class="bg-slate-800/90 p-5 rounded-2xl mb-6 space-y-3 border border-white/10 text-left">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-300 font-medium">Tổng điểm chiến dịch:</span>
+                        <span id="victoryScore" class="text-3xl font-black text-yellow-400">0</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-300">
+                        <span>Độ chính xác tổng thể:</span>
+                        <span id="victoryAccuracy" class="text-emerald-400 font-extrabold text-sm">100%</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-300">
+                        <span>Số ổ gà đã vá:</span>
+                        <span id="victoryPotholes" class="text-sky-300 font-extrabold text-sm">0/0</span>
+                    </div>
+                </div>
+
+                <button id="restartGameBtn" class="btn-victory w-full py-4 rounded-2xl text-slate-950 font-black text-xl tracking-wider uppercase pulse flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> CHƠI LẠI TỪ MÀN 1
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playShoot() {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.22);
+                gain.gain.setValueAtTime(0.8, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.22);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.22);
+            }
+
+            playHit() {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(340, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.18);
+                gain.gain.setValueAtTime(1.0, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+
+                setTimeout(() => this.playCheer(), 90);
+            }
+
+            playCheer() {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(650, this.ctx.currentTime + 0.12);
+                osc.frequency.linearRampToValueAtTime(520, this.ctx.currentTime + 0.25);
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.28);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.28);
+            }
+
+            playExplode() {
+                if (this.muted || !this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * 0.25;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(600, this.ctx.currentTime);
+                filter.frequency.linearRampToValueAtTime(50, this.ctx.currentTime + 0.25);
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.6, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            }
+
+            playFanfare() {
+                if (this.muted || !this.ctx) return;
+                const notes = [261.63, 329.63, 392.00, 523.25];
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.12);
+                    gain.gain.setValueAtTime(0.4, this.ctx.currentTime + idx * 0.12);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.12 + 0.3);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + idx * 0.12);
+                    osc.stop(this.ctx.currentTime + idx * 0.12 + 0.3);
+                });
+            }
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const sound = new SoundFX();
+
+        const MAX_LEVELS = 6;
+
+        // Game Core States
+        let gameState = 'START'; // 'START', 'PLAYING', 'LEVEL_CLEAR', 'VICTORY'
+        let currentLevel = 1;
+        let score = 0;
+        let combo = 0;
+        let shotsFired = 0;
+        let hitsCount = 0;
+        let totalPotholesPatched = 0;
+
+        // Physics Constants & Wind
+        const gravity = 0.35;
+        let wind = 0;
+
+        // Slingshot Bow Drag Control Variables
+        let isDragging = false;
+        let dragCurrent = { x: 0, y: 0 };
+        let aimAngleDeg = 45;
+        let aimPowerPercent = 50;
+
+        // Game World Entities
+        let shipperBike = { x: 90, y: 0, width: 85, height: 75 };
+        let projectile = null;
+        let potholes = [];
+        let vehicles = [];
+        let gravityWells = [];
+        let particles = [];
+        let floatingTexts = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            shipperBike.y = canvas.height - 125;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function initLevel(lvl) {
+            potholes = [];
+            vehicles = [];
+            gravityWells = [];
+            projectile = null;
+            particles = [];
+            floatingTexts = [];
+
+            // Wind Speed
+            wind = (Math.random() * 0.4 - 0.2) * (1 + lvl * 0.25);
+            updateWindUI();
+
+            const roadY = canvas.height - 70;
+            const minX = 300;
+            const maxX = canvas.width - 80;
+
+            // Spawn Potholes across the road
+            const numPotholes = Math.min(2 + Math.floor(lvl / 1.5), 5);
+            for (let i = 0; i < numPotholes; i++) {
+                const posX = minX + (i * ((maxX - minX) / numPotholes)) + Math.random() * 30;
+                const tier = Math.random() > 0.5 ? (Math.random() > 0.5 ? 'LARGE' : 'MEDIUM') : 'SMALL';
+                const radius = tier === 'LARGE' ? 36 : (tier === 'MEDIUM' ? 25 : 17);
+                const isMoving = lvl > 1 && Math.random() > 0.3;
+
+                potholes.push({
+                    x: posX,
+                    y: roadY,
+                    radius: radius,
+                    tier: tier,
+                    hitsRequired: tier === 'LARGE' ? 2 : 1,
+                    hitsTaken: 0,
+                    filled: false,
+                    isMoving: isMoving,
+                    speed: isMoving ? (Math.random() * 1.5 + 0.8) * (Math.random() > 0.5 ? 1 : -1) : 0,
+                    minBounds: posX - 50,
+                    maxBounds: Math.min(posX + 50, canvas.width - 40)
+                });
+            }
+
+            // Spawn Vehicles (Traffic Shields)
+            if (lvl >= 2) {
+                const vehicleCount = Math.min(Math.floor(lvl / 1.8), 3);
+                for (let i = 0; i < vehicleCount; i++) {
+                    vehicles.push({
+                        x: canvas.width + (i * 240),
+                        y: roadY - 38,
+                        width: Math.random() > 0.5 ? 85 : 55,
+                        height: 36,
+                        type: Math.random() > 0.5 ? 'BUS' : 'CAR',
+                        speed: -(Math.random() * 2 + 2 + lvl * 0.3)
+                    });
+                }
+            }
+
+            // Spawn Gravity Turbulences
+            if (lvl >= 3) {
+                const wellCount = Math.min(Math.floor(lvl / 2.5), 2);
+                for (let i = 0; i < wellCount; i++) {
+                    gravityWells.push({
+                        x: minX + Math.random() * (maxX - minX - 100),
+                        y: canvas.height - 220 - Math.random() * 140,
+                        radius: 60,
+                        forceY: (Math.random() - 0.5) * 0.45
+                    });
+                }
+            }
+
+            updateHUD();
+        }
+
+        function updateHUD() {
+            document.getElementById('scoreText').innerText = score;
+            document.getElementById('comboText').innerText = 'x' + combo;
+            document.getElementById('levelText').innerText = `MÀN ${currentLevel} / ${MAX_LEVELS}`;
+            
+            const remaining = potholes.filter(p => !p.filled).length;
+            const total = potholes.length;
+            document.getElementById('potholeProgressText').innerText = `Ổ GÀ: ${total - remaining}/${total}`;
+        }
+
+        function updateWindUI() {
+            const windSpeed = Math.abs(Math.round(wind * 100));
+            document.getElementById('windSpeedText').innerText = `${windSpeed} km/h`;
+            const icon = document.getElementById('windIcon');
+            if (wind < 0) {
+                icon.style.transform = 'rotate(180deg)';
+                icon.className = 'fa-solid fa-wind text-sky-400 text-base sm:text-lg transition-transform';
+            } else {
+                icon.style.transform = 'rotate(0deg)';
+                icon.className = 'fa-solid fa-wind text-orange-400 text-base sm:text-lg transition-transform';
+            }
+        }
+
+        function triggerBanner(text) {
+            const banner = document.getElementById('bannerText');
+            banner.innerText = text;
+            banner.classList.remove('opacity-0', 'scale-50');
+            banner.classList.add('opacity-100', 'scale-110');
+            setTimeout(() => {
+                banner.classList.remove('opacity-100', 'scale-110');
+                banner.classList.add('opacity-0', 'scale-50');
+            }, 1200);
+        }
+
+        function getBowOrigin() {
+            return {
+                x: shipperBike.x + 40,
+                y: shipperBike.y + 15
+            };
+        }
+
+        function handlePointerStart(e) {
+            if (projectile || gameState !== 'PLAYING') return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const touchX = clientX - rect.left;
+
+            if (touchX < canvas.width * 0.5) {
+                isDragging = true;
+                dragCurrent = { x: touchX, y: clientY - rect.top };
+                updateAngleAndPowerFromDrag(touchX, clientY - rect.top);
+            }
+        }
+
+        function handlePointerMove(e) {
+            if (!isDragging) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const touchX = clientX - rect.left;
+            const touchY = clientY - rect.top;
+
+            dragCurrent = { x: touchX, y: touchY };
+            updateAngleAndPowerFromDrag(touchX, touchY);
+        }
+
+        function handlePointerEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+            fireAsphaltFromBow();
+        }
+
+        function updateAngleAndPowerFromDrag(touchX, touchY) {
+            const origin = getBowOrigin();
+            const dx = origin.x - touchX;
+            const dy = touchY - origin.y;
+
+            if (dx > 0 || dy > 0) {
+                let rad = Math.atan2(dy, dx);
+                let deg = Math.round((rad * 180) / Math.PI);
+                aimAngleDeg = Math.max(5, Math.min(85, deg));
+
+                const pullDist = Math.hypot(dx, dy);
+                let power = Math.round((pullDist / 150) * 100);
+                aimPowerPercent = Math.max(12, Math.min(100, power));
+            }
+        }
+
+        canvas.addEventListener('mousedown', handlePointerStart);
+        canvas.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', handlePointerEnd);
+
+        canvas.addEventListener('touchstart', handlePointerStart, { passive: true });
+        canvas.addEventListener('touchmove', handlePointerMove, { passive: true });
+        window.addEventListener('touchend', handlePointerEnd);
+
+        function fireAsphaltFromBow() {
+            if (projectile || gameState !== 'PLAYING') return;
+
+            sound.init();
+            sound.playShoot();
+
+            const angleRad = (aimAngleDeg * Math.PI) / 180;
+            const speed = aimPowerPercent * 0.27;
+
+            const origin = getBowOrigin();
+
+            projectile = {
+                x: origin.x,
+                y: origin.y,
+                vx: Math.cos(angleRad) * speed,
+                vy: -Math.sin(angleRad) * speed,
+                radius: 9,
+                trail: []
+            };
+
+            shotsFired++;
+        }
+
+        function createSplashParticles(x, y, color = '#334155', count = 20) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.8) * 6,
+                    radius: Math.random() * 4 + 2,
+                    color: color,
+                    alpha: 1
+                });
+            }
+        }
+
+        function createFloatingText(text, x, y, color = '#FACC15') {
+            floatingTexts.push({
+                text: text,
+                x: x,
+                y: y,
+                vy: -1.5,
+                alpha: 1,
+                color: color
+            });
+        }
+
+        function updatePhysics() {
+            if (gameState !== 'PLAYING') return;
+
+            // 1. Moving Potholes
+            potholes.forEach(p => {
+                if (!p.filled && p.isMoving) {
+                    p.x += p.speed;
+                    if (p.x <= p.minBounds || p.x >= p.maxBounds) {
+                        p.speed *= -1;
+                    }
+                }
+            });
+
+            // 2. Traffic Vehicles (Obstacles)
+            vehicles.forEach(v => {
+                v.x += v.speed;
+                if (v.x + v.width < 0) {
+                    v.x = canvas.width + 80 + Math.random() * 150;
+                }
+            });
+
+            // 3. Projectile Flight Logic
+            if (projectile) {
+                projectile.trail.push({ x: projectile.x, y: projectile.y });
+                if (projectile.trail.length > 12) projectile.trail.shift();
+
+                projectile.vx += wind * 0.05;
+
+                gravityWells.forEach(well => {
+                    const dx = projectile.x - well.x;
+                    const dy = projectile.y - well.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < well.radius) {
+                        projectile.vy += well.forceY;
+                        projectile.vx += (dx / dist) * 0.1;
+                    }
+                });
+
+                projectile.vy += gravity;
+
+                projectile.x += projectile.vx;
+                projectile.y += projectile.vy;
+
+                const roadY = canvas.height - 70;
+
+                // Collision with Moving Vehicles
+                for (let v of vehicles) {
+                    if (
+                        projectile.x > v.x &&
+                        projectile.x < v.x + v.width &&
+                        projectile.y > v.y &&
+                        projectile.y < v.y + v.height
+                    ) {
+                        sound.playExplode();
+                        createSplashParticles(projectile.x, projectile.y, '#EF4444', 25);
+                        createFloatingText('XE CẢN!', projectile.x, projectile.y - 20, '#EF4444');
+                        projectile = null;
+                        combo = 0;
+                        updateHUD();
+                        return;
+                    }
+                }
+
+                // Landing on Road Level
+                if (projectile.y >= roadY - 4) {
+                    let hitPothole = false;
+
+                    for (let p of potholes) {
+                        if (!p.filled) {
+                            const dist = Math.abs(projectile.x - p.x);
+                            if (dist < p.radius) {
+                                hitPothole = true;
+                                p.hitsTaken++;
+
+                                if (p.hitsTaken >= p.hitsRequired) {
+                                    p.filled = true;
+                                    combo++;
+                                    hitsCount++;
+                                    totalPotholesPatched++;
+                                    const baseScore = p.tier === 'LARGE' ? 300 : (p.tier === 'MEDIUM' ? 200 : 100);
+                                    const earned = baseScore * combo;
+                                    score += earned;
+
+                                    sound.playHit();
+                                    createSplashParticles(p.x, roadY, '#1E293B', 30);
+                                    createFloatingText(`+${earned} OH YES!`, p.x, roadY - 30);
+                                    triggerBanner("OH YES WE DID!");
+                                } else {
+                                    sound.playHit();
+                                    createSplashParticles(p.x, roadY, '#475569', 15);
+                                    createFloatingText('CẦN THÊM 1 PHÁT!', p.x, roadY - 30, '#F59E0B');
+                                }
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!hitPothole) {
+                        combo = 0;
+                        createSplashParticles(projectile.x, roadY, '#64748B', 15);
+                        createFloatingText('HỤT CẦU!', projectile.x, roadY - 20, '#94A3B8');
+                    }
+
+                    projectile = null;
+                    updateHUD();
+
+                    if (potholes.every(p => p.filled)) {
+                        setTimeout(() => {
+                            if (currentLevel >= MAX_LEVELS) {
+                                showVictoryModal();
+                            } else {
+                                showLevelClearModal();
+                            }
+                        }, 800);
+                    }
+                }
+
+                if (projectile && (projectile.x > canvas.width + 50 || projectile.x < -50 || projectile.y > canvas.height)) {
+                    projectile = null;
+                    combo = 0;
+                    updateHUD();
+                }
+            }
+
+            // Particles Animation
+            particles.forEach((p, idx) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2;
+                p.alpha -= 0.02;
+                if (p.alpha <= 0) particles.splice(idx, 1);
+            });
+
+            // Floating Text Animation
+            floatingTexts.forEach((t, idx) => {
+                t.y += t.vy;
+                t.alpha -= 0.02;
+                if (t.alpha <= 0) floatingTexts.splice(idx, 1);
+            });
+        }
+
+        function drawTrajectoryArc() {
+            if (projectile || gameState !== 'PLAYING') return;
+
+            const angleRad = (aimAngleDeg * Math.PI) / 180;
+            const speed = aimPowerPercent * 0.27;
+            const origin = getBowOrigin();
+
+            let simX = origin.x;
+            let simY = origin.y;
+            let simVx = Math.cos(angleRad) * speed;
+            let simVy = -Math.sin(angleRad) * speed;
+
+            ctx.beginPath();
+            ctx.setLineDash([6, 6]);
+            ctx.strokeStyle = isDragging ? '#FACC15' : 'rgba(250, 204, 21, 0.4)';
+            ctx.lineWidth = isDragging ? 3 : 2;
+            ctx.moveTo(simX, simY);
+
+            const roadY = canvas.height - 70;
+
+            for (let i = 0; i < 60; i++) {
+                simVx += wind * 0.05;
+
+                gravityWells.forEach(well => {
+                    const dx = simX - well.x;
+                    const dy = simY - well.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < well.radius) {
+                        simVy += well.forceY;
+                        simVx += (dx / dist) * 0.1;
+                    }
+                });
+
+                simVy += gravity;
+                simX += simVx;
+                simY += simVy;
+
+                ctx.lineTo(simX, simY);
+
+                if (simY >= roadY) break;
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawCrossbowLauncher() {
+            const origin = getBowOrigin();
+            const angleRad = (aimAngleDeg * Math.PI) / 180;
+
+            const bowWidth = 44;
+            const pullBackDistance = isDragging ? (aimPowerPercent / 100) * 35 : 5;
+
+            const perpRad = angleRad + Math.PI / 2;
+            const topLimbX = origin.x + Math.cos(perpRad) * bowWidth;
+            const topLimbY = origin.y - Math.sin(perpRad) * bowWidth;
+            const botLimbX = origin.x - Math.cos(perpRad) * bowWidth;
+            const botLimbY = origin.y + Math.sin(perpRad) * bowWidth;
+
+            const nockX = origin.x - Math.cos(angleRad) * pullBackDistance;
+            const nockY = origin.y + Math.sin(angleRad) * pullBackDistance;
+
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(topLimbX, topLimbY);
+            ctx.quadraticCurveTo(origin.x + Math.cos(angleRad) * 15, origin.y - Math.sin(angleRad) * 15, botLimbX, botLimbY);
+            ctx.stroke();
+
+            ctx.strokeStyle = isDragging ? '#E31837' : '#FFFFFF';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(topLimbX, topLimbY);
+            ctx.lineTo(nockX, nockY);
+            ctx.lineTo(botLimbX, botLimbY);
+            ctx.stroke();
+
+            if (!projectile) {
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(nockX, nockY, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#f97316';
+                ctx.beginPath();
+                ctx.arc(nockX, nockY, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            if (isDragging) {
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                ctx.strokeStyle = '#006491';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(origin.x - 40, origin.y - 70, 110, 32, 8);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#FACC15';
+                ctx.font = '800 12px Outfit';
+                ctx.textAlign = 'left';
+                ctx.fillText(`∠ ${aimAngleDeg}°  ⚡ ${aimPowerPercent}%`, origin.x - 30, origin.y - 49);
+            }
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const roadY = canvas.height - 70;
+
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGradient.addColorStop(0, '#020617');
+            skyGradient.addColorStop(0.7, '#0f172a');
+            skyGradient.addColorStop(1, '#1e1b4b');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#090d16';
+            for (let i = 0; i < canvas.width; i += 60) {
+                const h = 90 + Math.sin(i) * 40;
+                ctx.fillRect(i, roadY - h - 30, 55, h + 30);
+            }
+
+            gravityWells.forEach(well => {
+                ctx.beginPath();
+                ctx.arc(well.x, well.y, well.radius, 0, Math.PI * 2);
+                const wellGrad = ctx.createRadialGradient(well.x, well.y, 5, well.x, well.y, well.radius);
+                wellGrad.addColorStop(0, 'rgba(56, 189, 248, 0.35)');
+                wellGrad.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
+                ctx.fillStyle = wellGrad;
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = '13px FontAwesome';
+                ctx.fillText('\uf012', well.x - 5, well.y + 4);
+            });
+
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, roadY, canvas.width, 70);
+            
+            ctx.fillStyle = '#E31837';
+            ctx.fillRect(0, roadY - 4, canvas.width, 4);
+
+            ctx.fillStyle = '#f8fafc';
+            for (let x = 0; x < canvas.width; x += 75) {
+                ctx.fillRect(x, roadY + 30, 35, 5);
+            }
+
+            potholes.forEach(p => {
+                if (p.filled) {
+                    ctx.fillStyle = '#020617';
+                    ctx.beginPath();
+                    ctx.ellipse(p.x, p.y + 3, p.radius + 3, p.radius * 0.4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#E31837';
+                    ctx.font = '900 9px Outfit';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('OH YES WE DID', p.x, p.y + 6);
+                } else {
+                    ctx.fillStyle = '#020617';
+                    ctx.beginPath();
+                    ctx.ellipse(p.x, p.y + 3, p.radius, p.radius * 0.4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    if (p.hitsRequired > 1) {
+                        ctx.fillStyle = '#f59e0b';
+                        ctx.font = 'bold 10px Outfit';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(`${p.hitsTaken}/${p.hitsRequired}`, p.x, p.y - 10);
+                    }
+                }
+            });
+
+            vehicles.forEach(v => {
+                ctx.fillStyle = v.type === 'BUS' ? '#006491' : '#dc2626';
+                ctx.beginPath();
+                ctx.roundRect(v.x, v.y, v.width, v.height, 6);
+                ctx.fill();
+
+                ctx.fillStyle = '#93c5fd';
+                ctx.fillRect(v.x + 8, v.y + 6, v.width - 16, 10);
+            });
+
+            ctx.fillStyle = '#006491';
+            ctx.beginPath();
+            ctx.roundRect(shipperBike.x - 15, shipperBike.y + 20, 70, 30, 8);
+            ctx.fill();
+
+            ctx.fillStyle = '#020617';
+            ctx.beginPath();
+            ctx.arc(shipperBike.x, shipperBike.y + 50, 12, 0, Math.PI * 2);
+            ctx.arc(shipperBike.x + 38, shipperBike.y + 50, 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#E31837';
+            ctx.fillRect(shipperBike.x - 32, shipperBike.y - 2, 32, 36);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '900 16px Outfit';
+            ctx.textAlign = 'center';
+            ctx.fillText('D', shipperBike.x - 16, shipperBike.y + 22);
+
+            drawCrossbowLauncher();
+            drawTrajectoryArc();
+
+            if (projectile) {
+                projectile.trail.forEach((t, idx) => {
+                    ctx.fillStyle = `rgba(249, 115, 22, ${idx / projectile.trail.length})`;
+                    ctx.beginPath();
+                    ctx.arc(t.x, t.y, projectile.radius * (idx / projectile.trail.length), 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(projectile.x, projectile.y, projectile.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#f97316';
+                ctx.beginPath();
+                ctx.arc(projectile.x, projectile.y, projectile.radius * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.alpha;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            });
+
+            floatingTexts.forEach(t => {
+                ctx.fillStyle = t.color;
+                ctx.globalAlpha = t.alpha;
+                ctx.font = '900 16px Outfit';
+                ctx.textAlign = 'center';
+                ctx.fillText(t.text, t.x, t.y);
+                ctx.globalAlpha = 1;
+            });
+        }
+
+        function gameLoop() {
+            updatePhysics();
+            drawGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function showLevelClearModal() {
+            gameState = 'LEVEL_CLEAR';
+            document.getElementById('endModal').classList.remove('hidden');
+            document.getElementById('finalScore').innerText = score;
+            const accuracy = shotsFired > 0 ? Math.round((hitsCount / shotsFired) * 100) : 100;
+            document.getElementById('accuracyText').innerText = accuracy + '%';
+        }
+
+        function showVictoryModal() {
+            gameState = 'VICTORY';
+            sound.playFanfare();
+            document.getElementById('victoryModal').classList.remove('hidden');
+            document.getElementById('victoryScore').innerText = score;
+            const accuracy = shotsFired > 0 ? Math.round((hitsCount / shotsFired) * 100) : 100;
+            document.getElementById('victoryAccuracy').innerText = accuracy + '%';
+            document.getElementById('victoryPotholes').innerText = totalPotholesPatched;
+        }
+
+        document.getElementById('startGameBtn').addEventListener('click', () => {
+            sound.init();
+            document.getElementById('startModal').classList.add('hidden');
+            gameState = 'PLAYING';
+            currentLevel = 1;
+            score = 0;
+            combo = 0;
+            shotsFired = 0;
+            hitsCount = 0;
+            totalPotholesPatched = 0;
+            initLevel(1);
+
+            setTimeout(() => {
+                const hint = document.getElementById('dragHint');
+                if (hint) hint.style.display = 'none';
+            }, 5000);
+        });
+
+        document.getElementById('nextLevelBtn').addEventListener('click', () => {
+            document.getElementById('endModal').classList.add('hidden');
+            currentLevel++;
+            gameState = 'PLAYING';
+            initLevel(currentLevel);
+        });
+
+        document.getElementById('restartGameBtn').addEventListener('click', () => {
+            document.getElementById('victoryModal').classList.add('hidden');
+            currentLevel = 1;
+            score = 0;
+            combo = 0;
+            shotsFired = 0;
+            hitsCount = 0;
+            totalPotholesPatched = 0;
+            gameState = 'PLAYING';
+            initLevel(1);
+        });
+
+        document.getElementById('soundToggleBtn').addEventListener('click', () => {
+            sound.muted = !sound.muted;
+            const icon = document.getElementById('soundIcon');
+            icon.className = sound.muted ? 'fa-solid fa-volume-xmark text-red-400' : 'fa-solid fa-volume-high';
+        });
+
+        window.onload = () => {
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
